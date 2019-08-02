@@ -1,0 +1,37 @@
+FROM websphere-liberty:19.0.0.6-kernel
+
+LABEL buildName="LARSBase"
+
+# MongoDB Install
+USER root 
+RUN apt-get update && \
+    apt-get install -y mongodb
+
+RUN mkdir -p /data/db
+RUN chmod 755 /data/db
+RUN chown 1001 /data/db
+ 
+
+# WLP Install
+USER 1001
+COPY --chown=1001:0 ./tmp/featureRepo.zip /tmp/featureRepo.zip
+COPY --chown=1001:0 ./etc /opt/ibm/wlp/etc
+COPY --chown=1001:0 server.xml /opt/ibm/wlp/usr/servers/larsServer/server.xml
+RUN /opt/ibm/wlp/bin/installUtility install larsServer
+#RUN /opt/ibm/wlp/bin/installUtility install --acceptLicense --from=/featureRepo mongodb-2.0 cdi-1.0 jaxrs-1.1 appSecurity-2.0 ssl-1.0 jndi-1.0
+RUN rm -rf /tmp/featureRepo.zip
+
+ 
+# LARS Install
+COPY larsServerPackage.jar /lars/
+RUN java -jar /lars/larsServerPackage.jar --acceptLicense /opt/ibm/wlp 
+
+USER root
+RUN rm /lars/larsServerPackage.jar
+
+# Update Server Config (because LARS install overwrites our server.xml)
+COPY --chown=1001:0 server.xml /opt/ibm/wlp/usr/servers/larsServer/server.xml
+
+# Startup MongoDB and WLP
+USER root
+CMD ["sh", "-c", "mongod  & /opt/ibm/wlp/bin/server run larsServer"]

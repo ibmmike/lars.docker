@@ -1,0 +1,18 @@
+FROM ibmmike/liberty-features-repo:base
+
+USER root
+COPY --chown=1001:0 /tmp/larsClient /tmp/larsClient
+COPY --chown=1001:0 ./tmp/featureRepo19.0.0.4 /tmp/featureRepo
+COPY --chown=1001:0 ./tmp/featureRepo18.0.0.4 /tmp/featureRepo
+
+RUN mongod & sleep 10s && /opt/ibm/wlp/bin/server start larsServer && \
+    sleep 15s && \
+#    cat /logs/messages.log && \
+    /tmp/larsClient/bin/larsClient upload /tmp/featureRepo/features/19.0.0.4/*.esa --url=http://localhost:9080/lars/ma/v1 --username=admin --password=admin && \
+    /tmp/larsClient/bin/larsClient upload /tmp/featureRepo/features/18.0.0.4/*.esa --url=http://localhost:9080/lars/ma/v1 --username=admin --password=admin && \
+    /opt/ibm/wlp/bin/server stop larsServer
+ 
+RUN rm -rf /tmp
+ 
+
+CMD ["sh", "-c", "mongod  & /opt/ibm/wlp/bin/server run larsServer"]
